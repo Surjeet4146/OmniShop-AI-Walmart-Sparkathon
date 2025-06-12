@@ -1,4 +1,3 @@
-```markdown
 # 🛍️ OmniShop AI - Walmart Sparkathon
 
 An intelligent Telegram shopping bot that provides personalized product recommendations, AR previews, and seamless shopping experience.
@@ -165,4 +164,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 ⭐ **Star this repository if you found it helpful!**
-```
