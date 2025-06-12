@@ -13,7 +13,7 @@ An intelligent Telegram shopping bot that provides personalized product recommen
 
 ## 🚀 Demo
 
-- **Live Bot**: [@OmniShopAI_bot](https://t.me/your_bot_username)
+- **Live Bot**: [@OmniShopAI_bot](https://t.me/OmniShopAI_bot)
 - **AR Preview**: [View AR Demo](https://surjeet4146.github.io/OmniShop-AI-Walmart-Sparkathon/ar.html)
 
 ## 📱 Screenshots
@@ -142,7 +142,7 @@ python -m pytest tests/
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License.
 
 ## 👥 Team
 
@@ -159,7 +159,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Issues**: [GitHub Issues](https://github.com/surjeet4146/OmniShop-AI-Walmart-Sparkathon/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/surjeet4146/OmniShop-AI-Walmart-Sparkathon/discussions)
-- **Email**: your.email@example.com
 
 ---
 
