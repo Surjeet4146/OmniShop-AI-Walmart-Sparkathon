@@ -1,4 +1,3 @@
-```python
 import os
 from dotenv import load_dotenv
 
@@ -20,4 +19,3 @@ class Config:
     USER_DATA_FILE = "data/user_data.json"
     FEEDBACK_FILE = "data/feedback.json"
     PRODUCTS_FILE = "data/products.json"
-```
