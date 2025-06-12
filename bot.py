@@ -1,52 +1,16 @@
-import telebot
-import time
-import json
 import os
+import telebot
+from telebot import types
 from datetime import datetime
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-# Bot token
-BOT_TOKEN = os.getenv('BOT_TOKEN', '8032821158:AAE4miR8OvLsOorO4cl-gpASYZ4C34LCA9E')
-
-# Initialize bot
+# Get the token from Railway environment variable
+BOT_TOKEN = os.getenv("8032821158:AAE4miR8OvLsOorO4cl-gpASYZ4C34LCA9E")
 bot = telebot.TeleBot(BOT_TOKEN)
 
-# File for user data persistence
-USER_DATA_FILE = "user_data.json"
-
-# User session management (e.g., for feedback)
+# Store user sessions (temporary, not persistent)
 user_sessions = {}
 
-# Load user data from JSON file
-def load_user_data():
-    try:
-        if os.path.exists(USER_DATA_FILE):
-            with open(USER_DATA_FILE, 'r') as f:
-                return json.load(f)
-    except Exception as e:
-        print(f"Error loading user data: {e}")
-    
-    return {
-        "default_user": {
-            "preferences": ["furniture"],
-            "purchase_history": ["Sofa"],
-            "wishlist": [],
-            "created_at": datetime.now().isoformat()
-        }
-    }
-
-# Save user data to JSON file
-def save_user_data(user_data):
-    try:
-        with open(USER_DATA_FILE, 'w') as f:
-            json.dump(user_data, f, indent=2)
-    except Exception as e:
-        print(f"Error saving user data: {e}")
-
-# Load initial user data
-user_data = load_user_data()
-
-# Enhanced product catalog
+# Enhanced product catalog (from your previous version)
 products = [
     {
         "id": 1,
@@ -61,7 +25,7 @@ products = [
     {
         "id": 2,
         "name": "Premium Wooden Sofa Set",
-        "category": "furniture",
+        "category": "home",
         "price": 499,
         "original_price": 649,
         "rating": 4.2,
@@ -80,93 +44,40 @@ products = [
     }
 ]
 
-# Get or create user profile
-def get_user_profile(user_id):
-    user_id = str(user_id)
-    if user_id not in user_data:
-        user_data[user_id] = {
-            "preferences": [],
-            "purchase_history": [],
-            "wishlist": [],
-            "created_at": datetime.now().isoformat(),
-            "last_active": datetime.now().isoformat()
-        }
-        save_user_data(user_data)
-    
-    user_data[user_id]["last_active"] = datetime.now().isoformat()
-    return user_data[user_id]
-
-# Start command
+# /start command handler
 @bot.message_handler(commands=['start'])
-def start(message):
-    user_id = str(message.from_user.id)
-    user_profile = get_user_profile(user_id)
-    
-    welcome_text = f"🛍️ Welcome to OmniShop AI, {message.from_user.first_name}!\n\n"
-    if len(user_profile["purchase_history"]) == 0:
-        welcome_text += "🎉 First time here? Let's get you started!\n\n"
-    else:
-        welcome_text += "👋 Welcome back! Ready to discover amazing deals?\n\n"
-    
-    welcome_text += "What can I help you find today?\n"
-    welcome_text += "• Electronics 📱\n• Furniture 🛋️\n\n"
-    welcome_text += "Use /help to see all available commands!"
-    
-    markup = InlineKeyboardMarkup()
-    markup.row(
-        InlineKeyboardButton("🔍 Browse Products", callback_data="browse_products"),
-        InlineKeyboardButton("❤️ My Wishlist", callback_data="view_wishlist")
+def send_welcome(message):
+    user_id = message.from_user.id
+    user_sessions[user_id] = {'wishlist': [], 'awaiting_feedback': False}
+
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add("🛍️ Browse Categories", "🔍 Search Products")
+    markup.add("🧾 View Wishlist", "📦 Orders")
+    markup.add("📞 Feedback", "🎯 AR Preview")
+
+    welcome_text = (
+        "👋 Welcome to *OmniShop AI*! Your smart shopping assistant on Telegram.\n\n"
+        "Use the menu below to get started ⬇️"
     )
-    markup.row(
-        InlineKeyboardButton("📊 Categories", callback_data="show_categories"),
-        InlineKeyboardButton("🎯 AR Preview", callback_data="ar_preview")
-    )
-    
-    try:
-        with open("welcome.png", "rb") as photo:
-            bot.send_photo(message.chat.id, photo, caption=welcome_text, reply_markup=markup)
-    except Exception as e:
-        print(f"Error in start command: {e}")
-        bot.reply_to(message, welcome_text, reply_markup=markup)
+    bot.send_message(message.chat.id, welcome_text, reply_markup=markup, parse_mode='Markdown')
 
-# Help command
-@bot.message_handler(commands=['help'])
-def help_command(message):
-    help_text = """
-🤖 **OmniShop AI Commands**
+# /feedback command handler
+@bot.message_handler(commands=['feedback'])
+def feedback(message):
+    user_id = message.from_user.id
+    user_sessions[user_id]['awaiting_feedback'] = True
+    feedback_text = "💬 **We Value Your Feedback!**\n\n"
+    feedback_text += "Help us improve OmniShop AI by sharing your thoughts.\n"
+    feedback_text += "Reply to this message with your feedback!"
+    bot.reply_to(message, feedback_text, parse_mode='Markdown')
 
-**Main Commands:**
-/start - Get started with OmniShop AI
-/help - Show this help message
-/categories - Browse product categories
-
-**Shopping Features:**
-/wishlist - View your wishlist
-/ar - AR product preview
-/analytics - View shopping analytics
-
-**Support:**
-/feedback - Share your feedback
-
-**How to Shop:**
-• Type product names (e.g., "TV", "laptop", "sofa")
-• Browse by category
-• Add items to wishlist
-• Get personalized recommendations
-
-**Special Offers:**
-Use code **WALMART20** for 20% off your purchase! 🎉
-    """
-    bot.reply_to(message, help_text, parse_mode='Markdown')
-
-# AR preview command
+# /ar command handler
 @bot.message_handler(commands=['ar'])
 def ar_preview(message):
-    markup = InlineKeyboardMarkup()
-    markup.row(
-        InlineKeyboardButton("📱 View in AR", url="https://surjeet4146.github.io/OmniShop-AI-Walmart-Sparkathon/ar.html")
+    markup = types.InlineKeyboardMarkup()
+    markup.add(
+        types.InlineKeyboardButton("📱 View in AR", url="https://surjeet4146.github.io/OmniShop-AI-Walmart-Sparkathon/ar.html")
     )
-    
     ar_text = "🎯 **AR Preview Available!**\n\n"
     ar_text += "Experience products in your space before buying:\n"
     ar_text += "• See how furniture fits in your room\n"
@@ -174,274 +85,135 @@ def ar_preview(message):
     ar_text += "Click the button below to try it out!"
     bot.reply_to(message, ar_text, reply_markup=markup, parse_mode='Markdown')
 
-# Analytics command
-@bot.message_handler(commands=['analytics'])
-def analytics(message):
-    user_id = str(message.from_user.id)
-    user_profile = get_user_profile(user_id)
-    
-    analytics_text = f"📊 **Your Shopping Analytics**\n\n"
-    analytics_text += f"🛒 Total Purchases: {len(user_profile['purchase_history'])}\n"
-    analytics_text += f"❤️ Wishlist Items: {len(user_profile['wishlist'])}\n"
-    analytics_text += f"📅 Member Since: {user_profile['created_at'][:10]}\n\n"
-    
-    if user_profile['preferences']:
-        analytics_text += f"🎯 Favorite Categories: {', '.join(user_profile['preferences'])}\n\n"
-    
-    analytics_text += "📈 Platform Stats:\n"
-    analytics_text += f"• Total Users: {len(user_data)}\n"
-    analytics_text += f"• Products Available: {len(products)}\n"
-    analytics_text += "• Average Rating: 4.3/5 ⭐"
-    bot.reply_to(message, analytics_text, parse_mode='Markdown')
+# Handle menu selections
+@bot.message_handler(func=lambda message: True)
+def handle_menu(message):
+    user_id = message.from_user.id
+    text = message.text.lower()
 
-# Feedback command (combined approach)
-@bot.message_handler(commands=['feedback'])
-def feedback(message):
-    print(f"Feedback command triggered by user {message.from_user.id}")  # Debug
-    feedback_text = "💬 **We Value Your Feedback!**\n\n"
-    feedback_text += "Help us improve OmniShop AI by sharing your thoughts.\n"
-    feedback_text += "Reply to this message with your feedback!"
-    
-    user_sessions[str(message.from_user.id)] = {"awaiting_feedback": True}
-    bot.reply_to(message, feedback_text, parse_mode='Markdown')
-
-# Wishlist command
-@bot.message_handler(commands=['wishlist'])
-def wishlist(message):
-    user_id = str(message.from_user.id)
-    user_profile = get_user_profile(user_id)
-    
-    if not user_profile['wishlist']:
-        wishlist_text = "❤️ Your wishlist is empty!\n\n"
-        wishlist_text += "Start adding products by typing their names or browsing categories."
-        bot.reply_to(message, wishlist_text)
-        return
-    
-    wishlist_text = "❤️ **Your Wishlist**\n\n"
-    for item_id in user_profile['wishlist']:
-        product = next((p for p in products if p['id'] == item_id), None)
-        if product:
-            discount = ((product['original_price'] - product['price']) / product['original_price']) * 100
-            wishlist_text += f"• {product['name']}\n"
-            wishlist_text += f"  💰 ${product['price']} (Save {discount:.0f}%)\n"
-            wishlist_text += f"  ⭐ {product['rating']}/5\n\n"
-    
-    markup = InlineKeyboardMarkup()
-    markup.row(InlineKeyboardButton("🗑️ Clear Wishlist", callback_data="clear_wishlist"))
-    bot.reply_to(message, wishlist_text, reply_markup=markup, parse_mode='Markdown')
-
-# Categories command
-@bot.message_handler(commands=['categories'])
-def categories(message):
-    categories_dict = {}
-    for product in products:
-        category = product['category']
-        if category not in categories_dict:
-            categories_dict[category] = []
-        categories_dict[category].append(product)
-    
-    category_text = "📂 **Product Categories**\n\n"
-    for category, cat_products in categories_dict.items():
-        category_text += f"**{category.title()}** ({len(cat_products)} items)\n"
-        for product in cat_products[:2]:
-            category_text += f"• {product['name']} - ${product['price']}\n"
-        if len(cat_products) > 2:
-            category_text += f"• ... and {len(cat_products) - 2} more\n"
-        category_text += "\n"
-    
-    markup = InlineKeyboardMarkup()
-    for category in categories_dict.keys():
-        markup.row(InlineKeyboardButton(f"🔍 Browse {category.title()}", callback_data=f"browse_{category}"))
-    bot.reply_to(message, category_text, reply_markup=markup, parse_mode='Markdown')
-
-# Callback query handler for inline buttons
-@bot.callback_query_handler(func=lambda call: True)
-def callback_query(call):
-    try:
-        if call.data == "browse_products" or call.data == "show_categories":
-            categories(call.message)
-        elif call.data == "view_wishlist":
-            wishlist(call.message)
-        elif call.data == "ar_preview":
-            ar_preview(call.message)
-        elif call.data.startswith("browse_"):
-            category = call.data.replace("browse_", "")
-            browse_category(call.message, category)
-        elif call.data.startswith("add_wishlist_"):
-            product_id = int(call.data.replace("add_wishlist_", ""))
-            add_to_wishlist(call.message, product_id)
-        elif call.data.startswith("product_"):
-            product_id = int(call.data.replace("product_", ""))
-            show_product_details(call.message, product_id)
-        elif call.data == "clear_wishlist":
-            user_id = str(call.message.chat.id)
-            user_profile = get_user_profile(user_id)
-            user_profile['wishlist'] = []
-            save_user_data(user_data)
-            bot.edit_message_text("❤️ Wishlist cleared!", call.message.chat.id, call.message.message_id)
-        
-        bot.answer_callback_query(call.id)
-    except Exception as e:
-        print(f"Error handling callback: {e}")
-        bot.answer_callback_query(call.id, "Something went wrong!")
-
-# Browse products by category
-def browse_category(message, category):
-    category_products = [p for p in products if p['category'] == category]
-    
-    if not category_products:
-        bot.reply_to(message, f"No products found in {category} category.")
-        return
-    
-    response_text = f"🔍 **{category.title()} Products**\n\n"
-    markup = InlineKeyboardMarkup()
-    
-    for product in category_products:
-        discount = ((product['original_price'] - product['price']) / product['original_price']) * 100
-        response_text += f"**{product['name']}**\n"
-        response_text += f"💰 ${product['price']} ~~${product['original_price']}~~ (Save {discount:.0f}%)\n"
-        response_text += f"⭐ {product['rating']}/5 | 📦 {product['stock']} in stock\n\n"
-        
-        markup.row(
-            InlineKeyboardButton(f"👀 View {product['name'][:20]}...", callback_data=f"product_{product['id']}"),
-            InlineKeyboardButton("❤️ Add to Wishlist", callback_data=f"add_wishlist_{product['id']}")
-        )
-    
-    bot.edit_message_text(response_text, message.chat.id, message.message_id, reply_markup=markup, parse_mode='Markdown')
-
-# Show product details
-def show_product_details(message, product_id):
-    product = next((p for p in products if p['id'] == product_id), None)
-    if not product:
-        bot.reply_to(message, "Product not found.")
-        return
-    
-    discount = ((product['original_price'] - product['price']) / product['original_price']) * 100
-    
-    details_text = f"🛍️ **{product['name']}**\n\n"
-    details_text += f"📝 {product['description']}\n\n"
-    details_text += f"💰 **Price:** ${product['price']} ~~${product['original_price']}~~\n"
-    details_text += f"💸 **You Save:** {discount:.0f}% (${product['original_price'] - product['price']})\n"
-    details_text += f"⭐ **Rating:** {product['rating']}/5\n"
-    details_text += f"📦 **Stock:** {product['stock']} available\n"
-    details_text += f"🏷️ **Category:** {product['category'].title()}\n\n"
-    details_text += "💎 **Special Offer:** Use code WALMART20 for additional 20% off!"
-    
-    markup = InlineKeyboardMarkup()
-    markup.row(
-        InlineKeyboardButton("❤️ Add to Wishlist", callback_data=f"add_wishlist_{product_id}"),
-        InlineKeyboardButton("🎯 View in AR", callback_data="ar_preview")
-    )
-    markup.row(InlineKeyboardButton("🔙 Back to Category", callback_data=f"browse_{product['category']}"))
-    
-    bot.edit_message_text(details_text, message.chat.id, message.message_id, reply_markup=markup, parse_mode='Markdown')
-
-# Add product to wishlist
-def add_to_wishlist(message, product_id):
-    user_id = str(message.chat.id)
-    user_profile = get_user_profile(user_id)
-    
-    if product_id not in user_profile['wishlist']:
-        user_profile['wishlist'].append(product_id)
-        save_user_data(user_data)
-        
-        product = next((p for p in products if p['id'] == product_id), None)
-        if product:
-            bot.answer_callback_query(message.message_id, f"❤️ {product['name']} added to your wishlist!")
-    else:
-        bot.answer_callback_query(message.message_id, "This item is already in your wishlist!")
-
-# Handle text messages (queries and feedback replies)
-@bot.message_handler(content_types=['text'])
-def handle_message(message):
-    user_id = str(message.from_user.id)
-    
     # Check if the message is a reply to the feedback prompt
     if message.reply_to_message and message.reply_to_message.text.startswith("💬 **We Value Your Feedback!**"):
         feedback_text = "✅ **Thank you for your feedback!**\n\n"
         feedback_text += "Your input helps us improve OmniShop AI."
         bot.reply_to(message, feedback_text, parse_mode='Markdown')
-        if user_id in user_sessions:
-            del user_sessions[user_id]
+        user_sessions[user_id]['awaiting_feedback'] = False
         return
-    
+
     # Check if user is providing feedback (additional check using user_sessions)
-    if user_id in user_sessions and user_sessions[user_id].get("awaiting_feedback"):
+    if user_sessions.get(user_id, {}).get('awaiting_feedback', False):
         feedback_text = "✅ **Thank you for your feedback!**\n\n"
         feedback_text += "Your input helps us improve OmniShop AI."
         bot.reply_to(message, feedback_text, parse_mode='Markdown')
-        del user_sessions[user_id]
+        user_sessions[user_id]['awaiting_feedback'] = False
         return
-    
-    # Handle regular queries
-    user_profile = get_user_profile(user_id)
-    query = message.text.lower().strip()
-    
-    # Product matching
+
+    # Handle menu options
+    if "browse" in text:
+        handle_browse(message)
+    elif "search" in text:
+        bot.send_message(message.chat.id, "🔍 Enter the product name to search:")
+        bot.register_next_step_handler(message, handle_search)
+    elif "wishlist" in text:
+        wishlist = user_sessions.get(user_id, {}).get('wishlist', [])
+        if wishlist:
+            wishlist_text = "🧾 Your wishlist:\n" + "\n".join(f"• {item}" for item in wishlist)
+        else:
+            wishlist_text = "🧾 Your wishlist is empty."
+        bot.send_message(message.chat.id, wishlist_text)
+    elif "orders" in text:
+        bot.send_message(message.chat.id, "📦 You have no orders yet.")
+    elif "feedback" in text:
+        feedback(message)
+    elif "ar preview" in text:
+        ar_preview(message)
+    else:
+        bot.send_message(message.chat.id, "❓ I didn't understand that. Use the menu options.")
+
+# Browse Categories
+def handle_browse(message):
+    markup = types.InlineKeyboardMarkup()
+    markup.add(
+        types.InlineKeyboardButton("👕 Clothes", callback_data="cat_clothes"),
+        types.InlineKeyboardButton("📱 Electronics", callback_data="cat_electronics"),
+    )
+    markup.add(
+        types.InlineKeyboardButton("🍎 Groceries", callback_data="cat_groceries"),
+        types.InlineKeyboardButton("🏠 Home", callback_data="cat_home")
+    )
+    bot.send_message(message.chat.id, "🛍️ Choose a category:", reply_markup=markup)
+
+# Handle search input
+def handle_search(message):
+    query = message.text.strip().lower()
+    user_id = message.from_user.id
+
+    # Search products
     matched_products = []
     for product in products:
         if (query in product["name"].lower() or 
             query in product["category"].lower() or
             any(word in product["name"].lower() for word in query.split())):
             matched_products.append(product)
-    
+
     if matched_products:
-        if len(matched_products) == 1:
+        product = matched_products[0]  # Take the first match
+        discount = ((product['original_price'] - product['price']) / product['original_price']) * 100
+        response = f"🔍 **Found this for you:**\n\n"
+        response += f"**{product['name']}**\n"
+        response += f"📝 {product['description']}\n\n"
+        response += f"💰 ${product['price']} ~~${product['original_price']}~~ (Save {discount:.0f}%)\n"
+        response += f"⭐ {product['rating']}/5 | 📦 {product['stock']} in stock\n\n"
+        response += "💎 Use code **WALMART20** for additional 20% off!"
+
+        markup = types.InlineKeyboardMarkup()
+        markup.add(
+            types.InlineKeyboardButton("🛒 Add to Wishlist", callback_data=f"add_{product['name']}"),
+            types.InlineKeyboardButton("🎯 View in AR", url="https://surjeet4146.github.io/OmniShop-AI-Walmart-Sparkathon/ar.html")
+        )
+        bot.send_message(message.chat.id, response, reply_markup=markup, parse_mode='Markdown')
+    else:
+        bot.send_message(message.chat.id, f"🤔 No products found for '{query}'. Try another search!")
+
+# Handle button clicks
+@bot.callback_query_handler(func=lambda call: True)
+def handle_callback(call):
+    user_id = call.from_user.id
+
+    if call.data.startswith("cat_"):
+        category = call.data.split("_", 1)[1]
+        bot.answer_callback_query(call.id, f"Selected {category.title()}")
+        matched_products = [p for p in products if p['category'] == category]
+        
+        if matched_products:
             product = matched_products[0]
             discount = ((product['original_price'] - product['price']) / product['original_price']) * 100
-            
-            if user_profile.get('preferences') and product['category'] in user_profile['preferences']:
-                response = f"🎯 **Perfect match for you!** (Based on your {product['category']} preference)\n\n"
-            else:
-                response = f"🔍 **Found this for you:**\n\n"
-            
+            response = f"🔎 **Top Product in {category.title()}**\n\n"
             response += f"**{product['name']}**\n"
             response += f"📝 {product['description']}\n\n"
             response += f"💰 ${product['price']} ~~${product['original_price']}~~ (Save {discount:.0f}%)\n"
             response += f"⭐ {product['rating']}/5 | 📦 {product['stock']} in stock\n\n"
             response += "💎 Use code **WALMART20** for additional 20% off!"
-            
-            markup = InlineKeyboardMarkup()
-            markup.row(
-                InlineKeyboardButton("❤️ Add to Wishlist", callback_data=f"add_wishlist_{product['id']}"),
-                InlineKeyboardButton("🎯 View in AR", callback_data="ar_preview")
-            )
-            bot.reply_to(message, response, reply_markup=markup, parse_mode='Markdown')
-        else:
-            response = f"🔍 **Found {len(matched_products)} products:**\n\n"
-            markup = InlineKeyboardMarkup()
-            
-            for product in matched_products[:5]:
-                discount = ((product['original_price'] - product['price']) / product['original_price']) * 100
-                response += f"• **{product['name']}** - ${product['price']} (Save {discount:.0f}%)\n"
-                
-                markup.row(
-                    InlineKeyboardButton(f"👀 {product['name'][:20]}...", callback_data=f"product_{product['id']}"),
-                    InlineKeyboardButton("❤️", callback_data=f"add_wishlist_{product['id']}")
-                )
-            
-            bot.reply_to(message, response, reply_markup=markup, parse_mode='Markdown')
-    else:
-        response = f"🤔 No exact matches found for '{query}'\n\n"
-        response += "**Try searching for:**\n"
-        response += "• Electronics\n• Furniture\n\n"
-        response += "**Popular products:**\n"
-        for product in sorted(products, key=lambda x: x['rating'], reverse=True)[:2]:
-            response += f"• {product['name']} ⭐{product['rating']}\n"
-        
-        markup = InlineKeyboardMarkup()
-        markup.row(
-            InlineKeyboardButton("📂 Browse Categories", callback_data="show_categories"),
-            InlineKeyboardButton("🎯 AR Preview", callback_data="ar_preview")
-        )
-        bot.reply_to(message, response, reply_markup=markup, parse_mode='Markdown')
 
-# Run the bot
-print("Starting OmniShop AI Bot... (Final Version with Feedback Fix)")
-while True:
-    try:
-        bot.polling(none_stop=True, interval=1, timeout=60)
-    except Exception as e:
-        print(f"Bot error: {e}")
-        time.sleep(10)
-        print("Restarting bot...")
+            markup = types.InlineKeyboardMarkup()
+            markup.add(
+                types.InlineKeyboardButton("🛒 Add to Wishlist", callback_data=f"add_{product['name']}"),
+                types.InlineKeyboardButton("🎯 View in AR", url="https://surjeet4146.github.io/OmniShop-AI-Walmart-Sparkathon/ar.html")
+            )
+            bot.send_message(call.message.chat.id, response, reply_markup=markup, parse_mode='Markdown')
+        else:
+            bot.send_message(call.message.chat.id, f"No products found in {category.title()} category.")
+
+    elif call.data.startswith("add_"):
+        product = call.data.split("_", 1)[1]
+        session = user_sessions.setdefault(user_id, {'wishlist': [], 'awaiting_feedback': False})
+        if product not in session['wishlist']:
+            session['wishlist'].append(product)
+            bot.answer_callback_query(call.id, f"Added {product.title()} to wishlist!")
+            bot.send_message(call.message.chat.id, f"✅ *{product.title()}* added to your wishlist!", parse_mode="Markdown")
+        else:
+            bot.answer_callback_query(call.id, "Already in your wishlist!")
+
+# Keep bot running
+if __name__ == "__main__":
+    print("🤖 OmniShop AI is running...")
+    bot.infinity_polling(timeout=60, long_polling_timeout=10)
