@@ -6,7 +6,7 @@ from datetime import datetime
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 # Bot token
-BOT_TOKEN = "8032821158:AAE4miR8OvLsOorO4cl-gpASYZ4C34LCA9E"
+BOT_TOKEN = os.getenv('BOT_TOKEN', '8032821158:AAE4miR8OvLsOorO4cl-gpASYZ4C34LCA9E')
 
 # Initialize bot
 bot = telebot.TeleBot(BOT_TOKEN)
