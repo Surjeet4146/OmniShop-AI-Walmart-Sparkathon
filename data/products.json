@@ -1,0 +1,23 @@
+```json
+{
+  "products": [
+    {
+      "id": 1,
+      "name": "Samsung 43-inch 4K Smart TV",
+      "category": "electronics",
+      "price": 299,
+      "original_price": 399,
+      "rating": 4.5,
+      "stock": 15,
+      "description": "Crystal clear 4K display with smart features",
+      "image_url": "https://via.placeholder.com/300x200?text=Samsung+TV",
+      "features": ["4K Resolution", "Smart TV", "HDR", "Voice Control"],
+      "specifications": {
+        "screen_size": "43 inches",
+        "resolution": "3840x2160",
+        "connectivity": "WiFi, Bluetooth, HDMI, USB"
+      }
+    }
+  ]
+}
+```
